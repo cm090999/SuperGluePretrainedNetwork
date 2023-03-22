@@ -33,8 +33,8 @@ if __name__ == '__main__':
     velo1 = data_frame1.get_velo(1)[:,0:3]    
 
     # Get projected depth maps
-    depth0 = veloToDepthImage(K_cal,velo0,image0,T_cal)
-    depth1 = veloToDepthImage(K_cal,velo1,image1,T_cal)
+    depth0 = veloToDepthImage(K_cal,velo0,image0,T_cal)[:,:,0]
+    depth1 = veloToDepthImage(K_cal,velo1,image1,T_cal)[:,:,0]
 
     ### SuperGlue
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     matching = Matching(config).eval().to(device)
 
     # Tranform image0 for matching
-    inp0 = frame2tensor(depth0, device)[0,0,:,:,:]
+    inp0 = frame2tensor(depth0, device)
 
     ## Apply SuperGlue + Pose Estimation for first image with n_time next images
 
@@ -88,13 +88,13 @@ if __name__ == '__main__':
         velo1 = data_frame1.get_velo(i)[:,0:3]   
 
         # Get projected depth maps
-        depth1 = veloToDepthImage(K_cal,velo1,image1,T_cal)
+        depth1 = veloToDepthImage(K_cal,velo1,image1,T_cal)[:,:,0]
         
         fileName = str(i).zfill(3) + '.png'
         savePath = output_dir / fileName
 
         # Tranform images
-        inp1 = frame2tensor(depth1, device)[0,0,:,:,:]
+        inp1 = frame2tensor(depth1, device)
 
         # Perform the matching.
         pred = matching({'image0': inp0, 'image1': inp1})
@@ -122,14 +122,15 @@ if __name__ == '__main__':
         m_thresh = matching.superglue.config['match_threshold']
 
         make_matching_plot(
-            np.array(depth0), np.array(depth1), kpts0, kpts1, mkpts0, mkpts1, color,
+            depth0, depth1, kpts0, kpts1, mkpts0, mkpts1, color,
             text, savePath, show_keypoints=True,
             fast_viz=True, opencv_display=True, opencv_title='Matches')
 
         # Pose Estimation with provided function
         pose = estimate_pose(mkpts0,mkpts1,K_cal,K_cal,1.)
-        R_rel_list_SuperGlue.append(pose[0])
-        t_rel_list_SuperGlue.append(pose[1])
+        if pose != None:
+            R_rel_list_SuperGlue.append(pose[0])
+            t_rel_list_SuperGlue.append(pose[1])
 
         ## Pose Estimation with cv2 function
         tkpts0 = (mkpts0 - K_cal[[0, 1], [2, 2]][None]) / K_cal[[0, 1], [0, 1]][None]
@@ -141,3 +142,23 @@ if __name__ == '__main__':
         _, R_rel,t_rel, inliers_pose = cv2.recoverPose(essential_matrix,tkpts0,tkpts1,np.eye(3))
         R_rel_list_cv2.append(R_rel)
         t_rel_list_cv2.append(t_rel)
+
+    resDict = {'R_rel_list_SuperGlue': R_rel_list_SuperGlue,
+               't_rel_list_SuperGlue': t_rel_list_SuperGlue,
+               'R_rel_list_cv2': R_rel_list_cv2,
+               't_rel_list_cv2': t_rel_list_cv2}
+    
+
+
+    fout = output_dir / 'Pose.txt'
+    fo = open(fout, "w")
+
+    for k, v in resDict.items():
+        fo.write(str(k) + ' >>> ' + '\n\n')
+        for i in range(len(v)):
+            fo.write(str(v[i]) + '\n\n')
+            fo.write('\n\n')
+
+    fo.close()
+
+
