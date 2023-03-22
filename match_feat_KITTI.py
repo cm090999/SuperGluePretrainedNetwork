@@ -124,3 +124,19 @@ if __name__ == '__main__':
         _, R_rel,t_rel, inliers_pose = cv2.recoverPose(essential_matrix,tkpts0,tkpts1,np.eye(3))
         R_rel_list_cv2.append(R_rel)
         t_rel_list_cv2.append(t_rel)
+
+    resDict = {'R_rel_list_SuperGlue': R_rel_list_SuperGlue,
+               't_rel_list_SuperGlue': t_rel_list_SuperGlue,
+               'R_rel_list_cv2': R_rel_list_cv2,
+               't_rel_list_cv2': t_rel_list_cv2}
+
+    fout = output_dir / 'Pose.txt'
+    fo = open(fout, "w")
+
+    for k, v in resDict.items():
+        fo.write(str(k) + ' >>> ' + '\n\n')
+        for i in range(len(v)):
+            fo.write(str(v[i]) + '\n\n')
+            fo.write('\n\n')
+
+    fo.close()
