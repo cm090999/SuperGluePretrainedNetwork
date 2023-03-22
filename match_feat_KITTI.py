@@ -41,7 +41,7 @@ if __name__ == '__main__':
     # Config Options
     nms_radius = 8 # SuperPoint Non Maximum Suppression (NMS) radius (Must be positive), default=4, type = int
     sinkhorn_iterations = 50 # Number of Sinkhorn iterations performed by SuperGlue , default=20, type=int
-    match_threshold = 0.8 # SuperGlue match threshold, default=0.2, type=float
+    match_threshold = 0.2 # SuperGlue match threshold, default=0.2, type=float
     keypoint_threshold = 0.005 # SuperPoint keypoint detector confidence threshold, default=0.005, type=float
     max_keypoints = 1024 # Maximum number of keypoints detected by Superpoint (\'-1\' keeps all keypoints), default=1024, type=int
     superglue = 'outdoor' # SuperGlue weights, choices={'indoor', 'outdoor'}, default='indoor'
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     matching = Matching(config).eval().to(device)
 
     # Tranform image0 for matching
-    inp0 = frame2tensor(depth0, device)
+    inp0 = frame2tensor(np.array(image0), device)
 
     ## Apply SuperGlue + Pose Estimation for first image with n_time next images
 
@@ -122,7 +122,7 @@ if __name__ == '__main__':
         m_thresh = matching.superglue.config['match_threshold']
 
         make_matching_plot(
-            depth0, depth1, kpts0, kpts1, mkpts0, mkpts1, color,
+            np.array(image0), depth1, kpts0, kpts1, mkpts0, mkpts1, color,
             text, savePath, show_keypoints=True,
             fast_viz=True, opencv_display=True, opencv_title='Matches')
 
