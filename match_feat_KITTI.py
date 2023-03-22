@@ -8,6 +8,7 @@ import matplotlib.cm as cm
 
 from models.matching import Matching
 from models.utils import frame2tensor, make_matching_plot, estimate_pose
+from helper_func import veloToDepthImage
 
 if __name__ == '__main__':
 
@@ -19,13 +20,21 @@ if __name__ == '__main__':
     # Number of Timestamps to load
     n_time = 10
 
-    # Load Dataset
+    # Load Dataset and extract calibration data
     data_frame1 = pk.raw(data_path, date, drive, frames=range(0, n_time, 1))
     K_cal = data_frame1.calib.K_cam3
+    T_cal = data_frame1.calib.T_cam3_velo
 
-    # Extract two images, lidar datapoints and calibration data
+    ## Extract lidar datapoints and create depth images with calibration data
     image0 = data_frame1.get_gray(0)[0]
     image1 = data_frame1.get_gray(1)[0]
+
+    velo0 = data_frame1.get_velo(0)[:,0:3]
+    velo1 = data_frame1.get_velo(1)[:,0:3]    
+
+    # Get projected depth maps
+    depth0 = veloToDepthImage(K_cal,velo0,image0,T_cal)
+    depth1 = veloToDepthImage(K_cal,velo1,image1,T_cal)
 
     ### SuperGlue
 
@@ -55,7 +64,7 @@ if __name__ == '__main__':
     matching = Matching(config).eval().to(device)
 
     # Tranform image0 for matching
-    inp0 = frame2tensor(np.array(image0), device)
+    inp0 = frame2tensor(depth0, device)[0,0,:,:,:]
 
     ## Apply SuperGlue + Pose Estimation for first image with n_time next images
 
@@ -71,13 +80,21 @@ if __name__ == '__main__':
 
     for i in range(1,n_time):
         print("Imago 0 and Image " + str(i))
+
+
+        ## Extract lidar datapoints and create depth images with calibration data
         image1 = data_frame1.get_gray(i)[0]
+
+        velo1 = data_frame1.get_velo(i)[:,0:3]   
+
+        # Get projected depth maps
+        depth1 = veloToDepthImage(K_cal,velo1,image1,T_cal)
         
         fileName = str(i).zfill(3) + '.png'
         savePath = output_dir / fileName
 
         # Tranform images
-        inp1 = frame2tensor(np.array(image1), device)
+        inp1 = frame2tensor(depth1, device)[0,0,:,:,:]
 
         # Perform the matching.
         pred = matching({'image0': inp0, 'image1': inp1})
@@ -105,7 +122,7 @@ if __name__ == '__main__':
         m_thresh = matching.superglue.config['match_threshold']
 
         make_matching_plot(
-            np.array(image0), np.array(image1), kpts0, kpts1, mkpts0, mkpts1, color,
+            np.array(depth0), np.array(depth1), kpts0, kpts1, mkpts0, mkpts1, color,
             text, savePath, show_keypoints=True,
             fast_viz=True, opencv_display=True, opencv_title='Matches')
 
