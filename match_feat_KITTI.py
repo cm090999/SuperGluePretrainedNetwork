@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     # Config Options
     nms_radius = 8 # SuperPoint Non Maximum Suppression (NMS) radius (Must be positive), default=4, type = int
-    sinkhorn_iterations = 20 # Number of Sinkhorn iterations performed by SuperGlue , default=20, type=int
+    sinkhorn_iterations = 50 # Number of Sinkhorn iterations performed by SuperGlue , default=20, type=int
     match_threshold = 0.8 # SuperGlue match threshold, default=0.2, type=float
     keypoint_threshold = 0.005 # SuperPoint keypoint detector confidence threshold, default=0.005, type=float
     max_keypoints = 1024 # Maximum number of keypoints detected by Superpoint (\'-1\' keeps all keypoints), default=1024, type=int
@@ -132,14 +132,10 @@ if __name__ == '__main__':
             R_rel_list_SuperGlue.append(pose[0])
             t_rel_list_SuperGlue.append(pose[1])
 
-        ## Pose Estimation with cv2 function
-        tkpts0 = (mkpts0 - K_cal[[0, 1], [2, 2]][None]) / K_cal[[0, 1], [0, 1]][None]
-        tkpts1 = (mkpts1 - K_cal[[0, 1], [2, 2]][None]) / K_cal[[0, 1], [0, 1]][None]
-
-        essential_matrix, inliers_ess = cv2.findEssentialMat(tkpts0,tkpts1,np.eye(3),threshold=1.0, prob=0.99999, method=cv2.RANSAC)
+        essential_matrix, inliers_ess = cv2.findEssentialMat(mkpts0,mkpts1,K_cal,threshold=1.0, prob=0.99999, method=cv2.RANSAC)
 
         # Get relative pose of the two images
-        _, R_rel,t_rel, inliers_pose = cv2.recoverPose(essential_matrix,tkpts0,tkpts1,np.eye(3))
+        _, R_rel,t_rel, inliers_pose = cv2.recoverPose(essential_matrix,mkpts0,mkpts1,K_cal)
         R_rel_list_cv2.append(R_rel)
         t_rel_list_cv2.append(t_rel)
 
@@ -156,8 +152,8 @@ if __name__ == '__main__':
     for k, v in resDict.items():
         fo.write(str(k) + ' >>> ' + '\n\n')
         for i in range(len(v)):
-            fo.write(str(v[i]) + '\n\n')
-            fo.write('\n\n')
+            fo.write(str(v[i]) + '\n')
+            fo.write('\n')
 
     fo.close()
 
